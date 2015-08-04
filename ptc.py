@@ -10,33 +10,73 @@ from itertools import takewhile, count
 
 # infrastructure
 
+# from: http://stackoverflow.com/questions/1868714/how-do-i-copy-an-entire-directory-of-files-into-an-existing-directory-using-pyth
+# because shutil.copytree is annoying regarding the existance of the destination directory.
+# shutils.copytree calls mkdir and fails unncesseraly
+def copytree(src, dst, symlinks = False, ignore = None):
+	if not os.path.exists(dst):
+		os.makedirs(dst)
+		shutil.copystat(src, dst)
+	lst = os.listdir(src)
+	if ignore:
+		excl = ignore(src, lst)
+		lst = [x for x in lst if x not in excl]
+	for item in lst:
+		s = os.path.join(src, item)
+		d = os.path.join(dst, item)
+		if symlinks and os.path.islink(s):
+			if os.path.lexists(d):
+				os.remove(d)
+			os.symlink(os.readlink(s), d)
+			try:
+				st = os.lstat(s)
+				mode = stat.S_IMODE(st.st_mode)
+				os.lchmod(d, mode)
+			except:
+				pass # lchmod not available
+		elif os.path.isdir(s):
+			copytree(s, d, symlinks, ignore)
+		else:
+			shutil.copy2(s, d)
+
 def install(filename):
 	"""
 	Installs/copies files and directories from the repository
 	to the current working directory.
 	"""
 	src = os.path.join(os.path.dirname(os.path.realpath(__file__)), filename)
+	dst_dir = os.path.realpath('.')
+	dst = os.path.join(dst_dir, filename)
 	if not os.path.exists(src):
-		print('    ... ERROR: source does not exist: ' + src)
+		print("    ... ERROR: source does not exist: " + src)
 		return
-	dst = os.path.join('.', filename)
 	if os.path.exists(dst):
-		print('    ... already exists.')
+		print("    ... already exists.")
 		return
 
 	if os.path.isfile(src):
-		shutil.copy(src, '.')
-		print('    ... done')
+		try:
+			shutil.copy2(src, dst_dir)
+			print("    ... done")
+		except shutil.Error as e:
+			print("    ... ERROR: file not copied. errror: '%s'" % e)
+		except OSError as e:
+			print("    ... ERROR: file not copied. errror: '%s'" % e)
 	elif os.path.isdir(src):
-		shutil.copytree(src, '.')
-		print('    ... done')
+		try:
+			copytree(src, dst)
+			print("    ... done")
+		except shutil.Error as e:
+			print("    ... ERROR: directory not copied. errror: '%s'" % e)
+		except OSError as e:
+			print("    ... ERROR: directory not copied. errror: '%s'" % e)
 	else:
-		print('error: unable to handle source: ' + src)
+		print("error: unable to handle source: " + src)
 
 # feature specific functions
 
 def sonar():
-	print('    ... executing stuff for sonar')
+	print("    ... executing stuff for sonar")
 
 #
 # features list
@@ -60,6 +100,11 @@ features = {
 			'CMakeLists.txt',
 			'LICENSE',
 			'README.md',
+		],
+	},
+	'doxygen' : {
+		'content' : [
+			'doxygen',
 		],
 	},
 	'linux-build-script' : {
@@ -119,10 +164,10 @@ def check_features_existance(keys):
 	errors = 0
 	for key in keys:
 		if not key in features:
-			print('error: unknown feature: ' + key)
+			print("error: unknown feature: " + key)
 			errors += 1
 	if errors > 0:
-		print('abort')
+		print("abort")
 		return False
 	return True
 
@@ -165,15 +210,15 @@ def sort_topologically(graph):
 def warning_dangerous_working_directory():
 	"""Prints warning about the danger of executing the script in its root directory."""
 	print()
-	print('error: not allowed to execute script with a potentionally')
-	print('       operation in this directory. this script is supposed')
-	print('       to be executed from the destination directory.')
+	print("error: not allowed to execute script with a potentionally")
+	print("       operation in this directory. this script is supposed")
+	print("       to be executed from the destination directory.")
 	print()
-	print('  example:')
+	print("  example:")
 	print()
-	print('  $ mkdir project')
-	print('  $ cd project')
-	print('  $ ' + os.path.realpath(__file__) + ' --add linux sonar')
+	print("  $ mkdir project")
+	print("  $ cd project")
+	print("  $ ' + os.path.realpath(__file__) + ' --add linux sonar")
 	print()
 	exit(-1)
 
@@ -198,21 +243,21 @@ parser.add_argument(
 args = parser.parse_args()
 
 if args.list_features:
-	print('Features:')
+	print("Features:")
 	for f in features:
-		print('- ' + f)
+		print("- " + f)
 	exit(0)
 
 if args.remove:
 	if dangerous_directory:
 		warning_dangerous_working_directory()
-	print('remove NOT IMPLEMENTED')
+	print("remove NOT IMPLEMENTED")
 	exit(-1)
 
 if args.add:
 	if dangerous_directory:
 		warning_dangerous_working_directory()
-	print('add features')
+	print("add features")
 
 	# topological sort and check of dependencies
 	graph = prepare_dependency_graph(args.add)
@@ -221,13 +266,13 @@ if args.add:
 	# action, regrading topological sort/level
 	for level in graph:
 		for key in level:
-			print('- adding: ' + key)
+			print("- adding: " + key)
 			if 'content' in features[key]:
 				for item in features[key]['content']:
 					if isinstance(item, str):
-						print('  - installing:', item)
+						print("  - installing:", item)
 						install(item)
 					elif isfunction(item):
-						print('  - calling:', item)
+						print("  - calling:", item)
 						item()
 
