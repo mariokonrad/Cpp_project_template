@@ -39,14 +39,42 @@ def copytree(src, dst, symlinks = False, ignore = None):
 		else:
 			shutil.copy2(s, d)
 
+def install_file(src, dst):
+	"""
+	Installs the file specified by src. If the target destination directory does
+	not exist, it will be created.
+	"""
+	dst_dir = os.path.dirname(dst)
+	if not os.path.exists(dst_dir):
+		print("    ... creating directory: " + os.path.relpath(dst_dir))
+		os.makedirs(dst_dir)
+	try:
+		shutil.copy2(src, dst_dir)
+		print("    ... done")
+	except shutil.Error as e:
+		print("    ... ERROR: file not copied. errror: '%s'" % e)
+	except OSError as e:
+		print("    ... ERROR: file not copied. errror: '%s'" % e)
+
+def intall_dir(src, dst):
+	"""
+	Installs entire directory tree.
+	"""
+	try:
+		copytree(src, dst)
+		print("    ... done")
+	except shutil.Error as e:
+		print("    ... ERROR: directory not copied. errror: '%s'" % e)
+	except OSError as e:
+		print("    ... ERROR: directory not copied. errror: '%s'" % e)
+
 def install(filename):
 	"""
 	Installs/copies files and directories from the repository
 	to the current working directory.
 	"""
 	src = os.path.join(os.path.dirname(os.path.realpath(__file__)), filename)
-	dst_dir = os.path.realpath('.')
-	dst = os.path.join(dst_dir, filename)
+	dst = os.path.join(os.path.realpath('.'), filename)
 	if not os.path.exists(src):
 		print("    ... ERROR: source does not exist: " + src)
 		return
@@ -55,21 +83,9 @@ def install(filename):
 		return
 
 	if os.path.isfile(src):
-		try:
-			shutil.copy2(src, dst_dir)
-			print("    ... done")
-		except shutil.Error as e:
-			print("    ... ERROR: file not copied. errror: '%s'" % e)
-		except OSError as e:
-			print("    ... ERROR: file not copied. errror: '%s'" % e)
+		install_file(src, dst)
 	elif os.path.isdir(src):
-		try:
-			copytree(src, dst)
-			print("    ... done")
-		except shutil.Error as e:
-			print("    ... ERROR: directory not copied. errror: '%s'" % e)
-		except OSError as e:
-			print("    ... ERROR: directory not copied. errror: '%s'" % e)
+		install_dir(src, dst)
 	else:
 		print("error: unable to handle source: " + src)
 
@@ -135,6 +151,7 @@ features = {
 	'coverage' : {
 		'content' : [
 			'coverage.ignore',
+			'cmake/modules/CodeCoverage.cmake',
 		],
 	},
 
