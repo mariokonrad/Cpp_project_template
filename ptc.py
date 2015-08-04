@@ -94,6 +94,12 @@ def install(filename):
 def sonar():
 	print("    ... executing stuff for sonar")
 
+def postinstall_coverage():
+	print("    ... executing stuff for coverage")
+
+def postinstall_coverage_2():
+	print("    ... executing even more stuff for coverage")
+
 #
 # features list
 #
@@ -107,8 +113,6 @@ def sonar():
 #     - function: a function to execeute during install
 #
 # note: feature also can work as 'packages', containing only dependencies
-#
-# TODO: this data could be in a JSON file, but let's not overcomplicate things for now
 #
 features = {
 	'base' : {
@@ -152,6 +156,10 @@ features = {
 		'content' : [
 			'coverage.ignore',
 			'cmake/modules/CodeCoverage.cmake',
+		],
+		'postinstall' : [
+			postinstall_coverage,
+			postinstall_coverage_2
 		],
 	},
 
@@ -284,6 +292,11 @@ if args.add:
 	for level in graph:
 		for key in level:
 			print("- adding: " + key)
+			if 'preinstall' in features[key]:
+				print("  - preinstall:")
+				for fn in features[key]['pretinstall']:
+					if isfunction(fn):
+						fn()
 			if 'content' in features[key]:
 				for item in features[key]['content']:
 					if isinstance(item, str):
@@ -292,4 +305,9 @@ if args.add:
 					elif isfunction(item):
 						print("  - calling:", item)
 						item()
+			if 'postinstall' in features[key]:
+				print("  - postinstall:")
+				for fn in features[key]['postinstall']:
+					if isfunction(fn):
+						fn()
 
